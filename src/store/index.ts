@@ -1,10 +1,10 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { persistReducer, persistStore } from "redux-persist";
 import storage from "redux-persist/lib/storage";
+import { geminiApi } from "./api/geminiApi";
 import appSlice from "./slices/appSlice";
 import candidateSlice from "./slices/candidateSlice";
 import interviewSlice from "./slices/interviewSlice";
-
 const persistConfig = {
   key: "root",
   storage,
@@ -15,6 +15,7 @@ const rootReducer = combineReducers({
   app: appSlice,
   candidates: candidateSlice,
   interview: interviewSlice,
+  [geminiApi.reducerPath]: geminiApi.reducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
@@ -26,7 +27,7 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: ["persist/PERSIST", "persist/REHYDRATE"],
       },
-    }),
+    }).concat(geminiApi.middleware),
 });
 
 export const persistor = persistStore(store);

@@ -1,45 +1,75 @@
 import { GoogleGenAI } from "@google/genai";
-
 import { gemini } from "../config/envConfig";
+import { type AiModel } from "../interfaces/aiModel";
 import { type ParsedResume } from "../types";
+import { logger } from "./logger";
 
-class ResumeParser {
+class ResumeParser implements AiModel {
   private genAI: GoogleGenAI | null = null;
   private isEnabled = false;
 
-  initialize(apiKey: string) {
-    if (apiKey) {
+  constructor() {
+    this.initialize();
+  }
+
+  private initialize() {
+    try {
+      // Check for API key in multiple sources
+      const apiKey =
+        gemini.GEMINI_API_KEY ||
+        localStorage.getItem("gemini_api_key") ||
+        (typeof window !== "undefined" &&
+          (window as { env?: { VITE_GEMINI_API_KEY?: string } }).env
+            ?.VITE_GEMINI_API_KEY);
+
+      console.log("ResumeParser initialization - API key found:", !!apiKey);
+      console.log(
+        "ResumeParser initialization - API key value:",
+        apiKey ? "***" + apiKey.slice(-4) : "none"
+      );
+
+      if (apiKey && apiKey !== "your_gemini_api_key_here" && apiKey !== "") {
+        this.genAI = new GoogleGenAI({ apiKey });
+        this.isEnabled = true;
+        logger.info("ResumeParser initialized with API key", "resume-parser");
+        console.log("ResumeParser successfully initialized");
+      } else {
+        logger.warn("No valid API key found for ResumeParser", "resume-parser");
+        this.isEnabled = false;
+        console.log("ResumeParser initialization failed - no valid API key");
+      }
+    } catch (error) {
+      logger.error("Failed to initialize ResumeParser:", error);
+      this.isEnabled = false;
+      console.error("ResumeParser initialization error:", error);
+    }
+  }
+
+  public updateApiKey(apiKey: string) {
+    try {
       this.genAI = new GoogleGenAI({ apiKey });
       this.isEnabled = true;
+      logger.info("ResumeParser API key updated", "resume-parser");
+    } catch (error) {
+      logger.error("Failed to update ResumeParser API key:", error);
+      this.isEnabled = false;
     }
   }
 
   async parseResume(file: File): Promise<ParsedResume> {
+    console.log("ResumeParser.parseResume called with file:", file.name);
+    console.log("ResumeParser enabled:", this.isEnabled);
+    console.log("ResumeParser genAI available:", !!this.genAI);
+
     if (!this.isEnabled || !this.genAI) {
+      console.error("ResumeParser not initialized properly");
       throw new Error(
         "AI service not initialized. Please configure your API key."
       );
     }
 
-    // Validate environment variables
-    if (!gemini.GEMINI_API_KEY) {
-      throw new Error(
-        "GEMINI_API_KEY is not configured. Please create a .env file with VITE_GEMINI_API_KEY=your_api_key"
-      );
-    }
-    if (!gemini.GEMINI_MODEL) {
-      throw new Error(
-        "GEMINI_MODEL is not configured. Please create a .env file with VITE_GEMINI_MODEL=gemini-1.5-flash"
-      );
-    }
-
     try {
-      console.log("Starting resume parsing...");
-      console.log("File type:", file.type);
-      console.log("File size:", file.size);
-
       const base64 = await this.fileToBase64(file);
-      console.log("Base64 length:", base64.length);
 
       const prompt = `
         Analyze this resume document and extract the following information. Return ONLY valid JSON without any markdown formatting or code blocks:
@@ -56,7 +86,6 @@ class ResumeParser {
         Please be thorough and extract all relevant information. If any field is not found, use null for that field. Return only the JSON object, no additional text or formatting.
       `;
 
-      console.log("Model:", gemini.GEMINI_MODEL);
       console.log("Making API call...");
 
       const response = await this.genAI.models.generateContentStream({
@@ -97,9 +126,9 @@ class ResumeParser {
       try {
         parsed = JSON.parse(jsonText);
       } catch (parseError) {
-        console.error("JSON parsing error:", parseError);
-        console.error("Raw response:", fullText);
-        console.error("Extracted JSON:", jsonText);
+        logger.error("JSON parsing error:", parseError);
+        logger.error("Raw response:", fullText);
+        logger.error("Extracted JSON:", jsonText);
         throw new Error("Invalid JSON response from AI");
       }
 
@@ -119,7 +148,7 @@ class ResumeParser {
         summary: parsed.summary || undefined,
       };
     } catch (error) {
-      console.error("Resume parsing error:", error);
+      logger.error("Resume parsing error:", error);
       throw new Error("Failed to parse resume. Please try again.");
     }
   }
@@ -135,7 +164,7 @@ class ResumeParser {
         resolve(base64);
       };
       reader.onerror = function (error) {
-        console.log("Error: ", error);
+        logger.error("Error: ", error);
         reject(error);
       };
     });

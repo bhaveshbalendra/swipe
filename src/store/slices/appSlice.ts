@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { AIConfig, AppState, Candidate, ChatMessage } from "../../types";
+import { geminiInstance } from "../../config/geminiConfig";
+import type { AppState, Candidate, ChatMessage } from "../../types";
 
 const initialState: AppState = {
   currentTab: "interviewee",
@@ -7,12 +8,7 @@ const initialState: AppState = {
   currentCandidate: null,
   isInterviewActive: false,
   chatMessages: [],
-  aiConfig: {
-    apiKey: "",
-    model: "gemini-1.5-flash",
-    temperature: 0.7,
-    isEnabled: false,
-  },
+  geminiInstance: geminiInstance(),
 };
 
 const appSlice = createSlice({
@@ -21,7 +17,7 @@ const appSlice = createSlice({
   reducers: {
     setCurrentTab: (
       state,
-      action: PayloadAction<"interviewee" | "interviewer">
+      action: PayloadAction<"interviewee" | "interviewer" | "validation">
     ) => {
       state.currentTab = action.payload;
     },
@@ -37,9 +33,6 @@ const appSlice = createSlice({
     clearChatMessages: (state) => {
       state.chatMessages = [];
     },
-    updateAIConfig: (state, action: PayloadAction<Partial<AIConfig>>) => {
-      state.aiConfig = { ...state.aiConfig, ...action.payload };
-    },
   },
 });
 
@@ -49,7 +42,6 @@ export const {
   setIsInterviewActive,
   addChatMessage,
   clearChatMessages,
-  updateAIConfig,
 } = appSlice.actions;
 
 export default appSlice.reducer;

@@ -1,3 +1,5 @@
+import type { GoogleGenAI } from "@google/genai";
+
 export interface Candidate {
   id: string;
   name: string;
@@ -8,6 +10,15 @@ export interface Candidate {
   status: "pending" | "in-progress" | "completed";
   interviewData?: InterviewData;
   createdAt: string;
+  // Additional fields for compatibility
+  resumeUrl?: string;
+  finalScore?: number;
+  summary?: string;
+  startTime?: string;
+  endTime?: string;
+  interviewStatus?: string;
+  answers?: Answer[];
+  questions?: Question[];
 }
 
 export interface InterviewData {
@@ -17,6 +28,9 @@ export interface InterviewData {
   startTime: string;
   endTime?: string;
   totalScore: number;
+  isActive?: boolean;
+  pausedQuestionId?: string; // Track which question was paused
+  pausedAt?: string; // Track when the question was paused
 }
 
 export interface Question {
@@ -33,29 +47,27 @@ export interface Answer {
   score: number;
   feedback: string;
   timestamp: string;
+  timeSpent?: number;
+  submittedAt?: string;
 }
 
 export interface ChatMessage {
   id: string;
-  text: string;
+  text?: string;
+  content?: string;
   isUser: boolean;
   timestamp: string;
+  type?: string;
+  questionId?: string;
 }
 
 export interface AppState {
-  currentTab: "interviewee" | "interviewer";
+  currentTab: "interviewee" | "interviewer" | "validation";
   candidates: Candidate[];
   currentCandidate: Candidate | null;
   isInterviewActive: boolean;
   chatMessages: ChatMessage[];
-  aiConfig: AIConfig;
-}
-
-export interface AIConfig {
-  apiKey: string;
-  model: string;
-  temperature: number;
-  isEnabled: boolean;
+  geminiInstance: GoogleGenAI;
 }
 
 export interface ParsedResume {
